@@ -163,7 +163,7 @@ func Run(args []string) error {
 			appFS,
 			exportPath,
 			[]byte(render(transformAttributes(page.pc.attributes, config.UnquotedProperties), contentWithAssets)),
-			0o644,
+			0644,
 		)
 		if err != nil {
 			return fmt.Errorf("copying file %q failed: %v", exportPath, err)
