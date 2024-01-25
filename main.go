@@ -36,8 +36,8 @@ type parsedPage struct {
 
 const publicAttributeSubstring = "public::"
 
-func loadPublicPages(appFS afero.Fs, logseqFolder string) ([]textFile, error) {
-	logseqPagesFolder := filepath.Join(logseqFolder, "pages")
+func loadPublicPages(appFS afero.Fs, config *Config) ([]textFile, error) {
+	logseqPagesFolder := filepath.Join(config.LogseqFolder, "pages")
 	// Find all files that contain `public::`
 	var publicFiles []string
 	err := afero.Walk(appFS, logseqPagesFolder, func(path string, info fs.FileInfo, walkError error) error {
@@ -53,9 +53,28 @@ func loadPublicPages(appFS afero.Fs, logseqFolder string) ([]textFile, error) {
 		}
 		defer file.Close()
 		fileScanner := bufio.NewScanner(file)
+
+		var (
+			isPublic, isFragment bool
+		)
+
 		for fileScanner.Scan() {
 			line := fileScanner.Text()
-			if strings.Contains(line, publicAttributeSubstring) {
+			if strings.Contains(line, publicAttributeSubstring) && !isPublic {
+				isPublic = true
+			}
+
+			if strings.Contains(line, "fragment::") && isPublic && !isFragment {
+				isFragment = true
+			}
+
+			yes := isPublic
+
+			if config.Fragment {
+				yes = yes && isFragment
+			}
+
+			if yes {
 				publicFiles = append(publicFiles, path)
 				return nil
 			}
@@ -67,6 +86,7 @@ func loadPublicPages(appFS afero.Fs, logseqFolder string) ([]textFile, error) {
 		return nil, fmt.Errorf("error during walking through the logseq folder (%q): %w", logseqPagesFolder, err)
 	}
 	pages := make([]textFile, 0, len(publicFiles))
+
 	for _, publicFile := range publicFiles {
 		srcContent, err := afero.ReadFile(appFS, publicFile)
 		if err != nil {
@@ -79,7 +99,6 @@ func loadPublicPages(appFS afero.Fs, logseqFolder string) ([]textFile, error) {
 		})
 	}
 	return pages, nil
-
 }
 
 func main() {
@@ -96,7 +115,7 @@ func Run(args []string) error {
 		return fmt.Errorf("the configuration could not be parsed: %w", err)
 	}
 
-	publicPages, err := loadPublicPages(appFS, config.LogseqFolder)
+	publicPages, err := loadPublicPages(appFS, config)
 	if err != nil {
 		return fmt.Errorf("Error during walking through a folder %v", err)
 	}
@@ -144,7 +163,7 @@ func Run(args []string) error {
 			appFS,
 			exportPath,
 			[]byte(render(transformAttributes(page.pc.attributes, config.UnquotedProperties), contentWithAssets)),
-			0644,
+			0o644,
 		)
 		if err != nil {
 			return fmt.Errorf("copying file %q failed: %v", exportPath, err)

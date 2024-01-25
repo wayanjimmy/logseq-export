@@ -3,3 +3,5 @@ export-*
 test/test-output
 example/logseq-export-example/public
 example/logseq-export-example/.hugo_build.lock
+tmp2
+exporter

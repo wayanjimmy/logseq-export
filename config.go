@@ -17,6 +17,7 @@ type Config struct {
 	LogseqFolder       string
 	OutputFolder       string
 	UnquotedProperties []string
+	Fragment           bool
 }
 
 func (c *Config) Validate() error {
@@ -33,6 +34,7 @@ func flagset() *flag.FlagSet {
 	f := flag.NewFlagSet("config", flag.ExitOnError)
 	f.String("logseqFolder", "", "[MANDATORY] Folder where all public pages are exported.")
 	f.String("outputFolder", "", "[MANDATORY] Folder where the transformed logseq pages will be stored.")
+	f.Bool("fragment", false, "export fragment type of page")
 	return f
 }
 
@@ -69,6 +71,8 @@ func parseConfig(args []string) (*Config, error) {
 	if err := k.Unmarshal("", &config); err != nil {
 		return nil, fmt.Errorf("error unmarshal config: %w", err)
 	}
+
+	fmt.Println(config)
 
 	err := config.Validate()
 	if err != nil {
